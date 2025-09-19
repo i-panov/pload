@@ -198,7 +198,7 @@ func NewDownloader(cfg Config) (*Downloader, error) {
 	}
 
 	pool := &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			buf := make([]byte, cfg.BufferSize)
 			return &buf
 		},
@@ -805,15 +805,12 @@ func (d *Downloader) calculateWorkerCount(contentLength int64, supportsRanges bo
 		return 1
 	}
 	if d.config.MaxWorkers > 0 {
-		return minInt(d.config.MaxWorkers, maxParts)
+		return min(d.config.MaxWorkers, maxParts)
 	}
 
-	numCPU := runtime.NumCPU()
-	if numCPU < 1 {
-		numCPU = 1
-	}
+	numCPU := max(runtime.NumCPU(), 1)
 	// Эвристика: не более 4 потоков на ядро, но не более maxParts
-	guess := minInt(numCPU*4, maxParts)
+	guess := min(numCPU*4, maxParts)
 
 	// Убедимся, что размер части не слишком маленький
 	if contentLength/int64(guess) < minPartSize {
@@ -823,7 +820,7 @@ func (d *Downloader) calculateWorkerCount(contentLength int64, supportsRanges bo
 	if guess < 1 {
 		return 1
 	}
-	return minInt(guess, maxParts)
+	return min(guess, maxParts)
 }
 
 // Логирование
@@ -936,13 +933,6 @@ func (d *Downloader) checkFileExists() error {
 		return errors.New("операция отменена пользователем")
 	}
 	return nil
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func formatBytes(b int64) string {
