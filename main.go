@@ -183,6 +183,8 @@ func NewDownloader(cfg Config) (*Downloader, error) {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
+	// Клиент без HTTP/2 для скачивания частей — некоторые серверы некорректно
+	// обрабатывают Range-запросы при HTTP/2, поэтому части грузятся через HTTP/1.1.
 	noH2Transport := defaultTransport.Clone()
 	tlsConfig := &tls.Config{
 		NextProtos: []string{"http/1.1"},
@@ -937,6 +939,9 @@ func (d *Downloader) checkFileExists() error {
 
 func formatBytes(b int64) string {
 	const unit = 1024
+	if b < 0 {
+		return "0 B"
+	}
 	if b < unit {
 		return fmt.Sprintf("%d B", b)
 	}
@@ -994,6 +999,13 @@ func parseFlags() (Config, error) {
 		pflag.PrintDefaults()
 	}
 	pflag.Parse()
+
+	for _, arg := range os.Args[1:] {
+		if arg == "-h" || arg == "--help" {
+			pflag.Usage()
+			os.Exit(0)
+		}
+	}
 
 	// Если указан флаг resume, автоматически включаем save-state
 	if cfg.Resume {
