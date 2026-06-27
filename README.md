@@ -1,98 +1,99 @@
 # pload
 
-Многопоточный загрузчик файлов с поддержкой возобновления загрузки
+Multi-threaded file downloader with resume support.
 
-## Особенности
+## Features
 
-- Многопоточная загрузка с автоматическим определением количества потоков
-- Поддержка возобновления прерванной загрузки
-- Проверка доступного места на диске перед загрузкой
-- Поддержка HTTP/HTTPS протоколов
-- Сохранение состояния загрузки для надежного возобновления
-- Обработка ошибок и автоматические повторные попытки при сбоях
-- Отображение прогресса загрузки
-- Поддержка различных платформ (Linux, Windows, macOS)
+- Multi-threaded download with automatic worker count detection
+- Resume interrupted downloads (--resume)
+- Disk space check before download
+- HTTP/HTTPS with optional TLS skip (--insecure)
+- Part state persistence for reliable resume (enabled by default)
+- Automatic retries with exponential backoff + jitter
+- Content-Disposition filename extraction
+- Progress bar with real-time speed and ETA
+- Color output (auto-detected, can be forced on/off with --color)
+- Quiet mode for scripting (--quiet)
 
-## Установка
-
-```bash
-go build -o bin/pload
-```
-
-Или можно установить как CLI-инструмент:
+## Install
 
 ```bash
+go build -o bin/pload .
+# or
 go install github.com/i-panov/pload@latest
 ```
 
-## Использование
+## Usage
 
 ```bash
-# Простая загрузка
+# Simple download
 pload https://example.com/largefile.zip
 
-# Загрузка с указанием выходного файла
+# Output to specific file
 pload -o myfile.zip https://example.com/largefile.zip
 
-# Загрузка с 8 потоками
+# 8 workers
 pload -w 8 https://example.com/largefile.zip
 
-# Продолжение прерванной загрузки
+# Resume interrupted download
 pload --resume https://example.com/largefile.zip
 
-# Подробный режим (debug)
+# Verbose debug output
 pload -v https://example.com/largefile.zip
 
-# Загрузка с игнорированием ошибок TLS
+# Skip TLS verification
 pload --insecure https://self-signed.badssl.com/file.zip
+
+# Quiet mode (one-line summary)
+pload -q https://example.com/file.zip
+
+# Disable colors
+pload --color=never https://example.com/file.zip
 ```
 
-## Флаги
-
-```
-  -a, --user-agent string     User-Agent (по умолчанию "Go-MultiThread-Downloader/3.3.0")
-  -f, --force                 Перезаписать без подтверждения
-  -h, --help                  Показать помощь
-  -k, --insecure              Игнорировать ошибки TLS сертификатов
-  -t, --timeout duration      Таймаут HTTP-запроса (по умолчанию 1m0s)
-  -u, --url string            URL файла (обязательно)
-  -v, --verbose               Подробный вывод (эквивалент --log-level=debug)
-  -w, --workers int           Количество потоков (0 = авто) (по умолчанию 0)
-      --buffer-size int       Размер буфера (байт, max 8MiB) (по умолчанию 262144)
-      --log-level string      Уровень логов: error,warn,info,debug (по умолчанию "info")
-      --no-emoji              Отключить эмодзи в логах
-      --retries int           Количество повторов на часть (по умолчанию 5)
-      --retry-delay duration  Базовая задержка повтора (по умолчанию 2s)
-  -o, --output string         Путь к выходному файлу (по умолчанию — имя из URL)
-      --resume                Продолжить скачивание существующего файла (если возможно)
-      --save-state            Сохранять состояние частей для надёжного resume (включено по умолчанию)
-```
-
-## Примеры
+## Build
 
 ```bash
-# Загрузка большого файла с 8 потоками и подробным выводом
-pload -w 8 -v https://speed.hetzner.de/10GB.bin
-
-# Продолжение загрузки с сохранением состояния
-pload --resume --save-state https://example.com/largefile.zip
-
-# Загрузка с кастомным User-Agent
-pload -a "MyCustomAgent/1.0" https://example.com/file.zip
-
-# Загрузка с увеличенным количеством повторов
-pload --retries 10 --retry-delay 5s https://unreliable-server.com/file.zip
+make build      # builds to bin/pload
+make test       # run tests
+make clean      # remove bin/
 ```
 
-## Как это работает
+## Flags
 
-1. Загрузчик сначала получает информацию о файле с помощью HEAD-запроса
-2. Определяет поддержку многопоточной загрузки (Range-запросы)
-3. Выделяет место на диске для файла
-4. Разбивает файл на части и загружает их параллельно
-5. Сохраняет состояние загрузки для возможности возобновления
-6. Проверяет целостность файла после загрузки
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--url` | `-u` | | Download URL (required) |
+| `--output` | `-o` | auto¹ | Output file path |
+| `--workers` | `-w` | auto | Number of workers (0 = auto) |
+| `--timeout` | `-t` | 1m0s | HTTP request timeout |
+| `--user-agent` | `-a` | Go-MultiThread-Downloader/3.3.0 | User-Agent header |
+| `--force` | `-f` | false | Overwrite without confirmation |
+| `--verbose` | `-v` | false | Verbose output (implies --log-level=debug) |
+| `--log-level` | | info | Log level: error, warn, info, debug |
+| `--buffer-size` | | 256 KiB | Buffer size in bytes (max 8 MiB) |
+| `--no-emoji` | | false | Disable emoji in logs |
+| `--retries` | | 5 | Retries per part |
+| `--retry-delay` | | 2s | Base retry delay |
+| `--resume` | | false | Resume partial download |
+| `--save-state` | | true | Save part state (always on with --resume) |
+| `--insecure` | `-k` | false | Skip TLS verification |
+| `--color` | | auto | Color output: auto, always, never |
+| `--quiet` | `-q` | false | Errors only + one-line completion summary |
 
-## Лицензия
+¹ Priority: Content-Disposition → URL basename → `downloaded_file`
 
-MIT License
+## How it works
+
+1. Sends HEAD request to get file info (Content-Length, Accept-Ranges, Content-Disposition)
+2. If HEAD fails, falls back to GET with Range: bytes=0-0
+3. Checks available disk space
+4. Pre-allocates the file (sparse if supported by filesystem)
+5. Splits file into parts, downloads them in parallel
+6. Each part retries on failure with exponential backoff + jitter
+7. Saves part state for resume after each completed part
+8. Verifies final file size on completion
+
+## License
+
+BSD 3-Clause License

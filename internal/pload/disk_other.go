@@ -1,6 +1,6 @@
 //go:build !unix && !windows
 
-package main
+package pload
 
 import "errors"
 
